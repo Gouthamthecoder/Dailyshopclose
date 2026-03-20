@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Router, Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -17,16 +18,36 @@ import DailyClosingPage from "@/pages/daily-closing";
 import SettingsPage from "@/pages/settings";
 import LoginPage from "@/pages/login";
 import { appBasePath } from "@/lib/base-path";
+import { useLocation } from "wouter";
+
+function RedirectToClosing() {
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    setLocation("/closing", { replace: true });
+  }, [setLocation]);
+
+  return null;
+}
 
 function AuthenticatedRouter() {
   const { isAdmin } = useAuth();
 
+  if (!isAdmin) {
+    return (
+      <Switch>
+        <Route path="/closing" component={DailyClosingPage} />
+        <Route component={RedirectToClosing} />
+      </Switch>
+    );
+  }
+
   return (
     <Switch>
-      {isAdmin && <Route path="/" component={Dashboard} />}
+      <Route path="/" component={Dashboard} />
       <Route path="/closing" component={DailyClosingPage} />
-      {isAdmin && <Route path="/settings" component={SettingsPage} />}
-      <Route path="/">{isAdmin ? <Dashboard /> : <DailyClosingPage />}</Route>
+      <Route path="/settings" component={SettingsPage} />
+      <Route path="/"><Dashboard /></Route>
       <Route component={NotFound} />
     </Switch>
   );

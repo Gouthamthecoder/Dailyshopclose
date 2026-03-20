@@ -61,7 +61,7 @@ export default function LoginPage() {
   const onRegister = async (values: RegisterValues) => {
     try {
       await register.mutateAsync({ username: values.username, password: values.password });
-      toast({ title: "Account created", description: "You've been logged in" });
+      toast({ title: "Account created", description: "You've been logged in with daily closing access" });
     } catch (err: any) {
       toast({ title: "Registration failed", description: err.message, variant: "destructive" });
     }
@@ -92,7 +92,7 @@ export default function LoginPage() {
               </TabsContent>
               <TabsContent value="register" className="mt-4">
                 <CardTitle className="text-lg">Create account</CardTitle>
-                <CardDescription>New accounts are created with user role by default</CardDescription>
+                <CardDescription>New accounts can access only the Daily Closing page</CardDescription>
               </TabsContent>
             </Tabs>
           </CardHeader>
@@ -185,7 +185,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-xs text-center text-muted-foreground">
-          Default admin: admin / admin123
+          Default admin: admin / admin123. New users get daily closing access only.
         </p>
       </div>
     </div>

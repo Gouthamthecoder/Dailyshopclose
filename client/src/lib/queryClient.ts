@@ -4,6 +4,16 @@ import { apiPath } from "@/lib/base-path";
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
+
+    try {
+      const parsed = JSON.parse(text) as { message?: string };
+      if (parsed.message) {
+        throw new Error(parsed.message);
+      }
+    } catch {
+      // Fall back to the raw response when it isn't JSON.
+    }
+
     throw new Error(`${res.status}: ${text}`);
   }
 }
