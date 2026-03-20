@@ -1,12 +1,13 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { Router } from "express";
 import type { Server } from "http";
-import { storage, usingMemoryStorage } from "./storage";
+import { dbPool, hasDatabase, storage, usingMemoryStorage } from "./storage";
 import { insertDailyClosingSchema, insertShopSettingsSchema, loginSchema, registerSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 import MemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
 import { appBasePath } from "./base-path";
 
 declare module "express-session" {
@@ -46,7 +47,16 @@ export async function registerRoutes(
   const api = Router();
 
   const SessionStore = MemoryStore(session);
+  const PostgresSessionStore = connectPgSimple(session);
   const isProduction = process.env.NODE_ENV === "production";
+  const store =
+    isProduction && hasDatabase && dbPool
+      ? new PostgresSessionStore({
+          pool: dbPool,
+          createTableIfMissing: true,
+        })
+      : new SessionStore({ checkPeriod: 86400000 });
+
   if (isProduction) {
     app.set("trust proxy", 1);
   }
@@ -55,7 +65,7 @@ export async function registerRoutes(
       secret: process.env.SESSION_SECRET || "dev-session-secret-change-me",
       resave: false,
       saveUninitialized: false,
-      store: new SessionStore({ checkPeriod: 86400000 }),
+      store,
       cookie: {
         maxAge: 24 * 60 * 60 * 1000,
         httpOnly: true,
@@ -68,6 +78,10 @@ export async function registerRoutes(
   if (usingMemoryStorage) {
     console.warn("DATABASE_URL is not set. Running with in-memory storage for local development.");
   }
+
+  app.get(`${appBasePath}/healthz`, (_req, res) => {
+    res.json({ ok: true });
+  });
 
   api.post("/auth/register", async (req, res) => {
     try {

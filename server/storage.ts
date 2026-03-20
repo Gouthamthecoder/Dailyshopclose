@@ -18,7 +18,9 @@ const pool = hasDatabase
     })
   : null;
 
+export const dbPool = pool;
 export const db = pool ? drizzle(pool) : null;
+export { hasDatabase };
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
