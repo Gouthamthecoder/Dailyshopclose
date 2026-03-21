@@ -19,11 +19,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
+  shopId: z.string().min(1, "Shop ID is required"),
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
 const registerSchema = z.object({
+  shopId: z.string().min(1, "Shop ID is required"),
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(4, "Password must be at least 4 characters"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
@@ -42,12 +44,12 @@ export default function LoginPage() {
 
   const loginForm = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { username: "", password: "" },
+    defaultValues: { shopId: "", username: "", password: "" },
   });
 
   const registerForm = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { username: "", password: "", confirmPassword: "" },
+    defaultValues: { shopId: "", username: "", password: "", confirmPassword: "" },
   });
 
   const onLogin = async (values: LoginValues) => {
@@ -60,7 +62,7 @@ export default function LoginPage() {
 
   const onRegister = async (values: RegisterValues) => {
     try {
-      await register.mutateAsync({ username: values.username, password: values.password });
+      await register.mutateAsync({ shopId: values.shopId, username: values.username, password: values.password });
       toast({ title: "Account created", description: "You've been logged in with daily closing access" });
     } catch (err: any) {
       toast({ title: "Registration failed", description: err.message, variant: "destructive" });
@@ -102,6 +104,19 @@ export default function LoginPage() {
                 <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
                   <FormField
                     control={loginForm.control}
+                    name="shopId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Shop ID</FormLabel>
+                        <FormControl>
+                          <Input placeholder="shop-1" {...field} data-testid="input-login-shop-id" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={loginForm.control}
                     name="username"
                     render={({ field }) => (
                       <FormItem>
@@ -135,6 +150,19 @@ export default function LoginPage() {
             ) : (
               <Form {...registerForm}>
                 <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+                  <FormField
+                    control={registerForm.control}
+                    name="shopId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Shop ID</FormLabel>
+                        <FormControl>
+                          <Input placeholder="shop-1" {...field} data-testid="input-register-shop-id" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={registerForm.control}
                     name="username"
@@ -184,8 +212,8 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <p className="text-xs text-center text-muted-foreground">
-          Default admin: admin / admin123. New users get daily closing access only.
+      <p className="text-xs text-center text-muted-foreground">
+          Default admin: shop-1 / admin / admin123. New users get daily closing access only within their own shop.
         </p>
       </div>
     </div>

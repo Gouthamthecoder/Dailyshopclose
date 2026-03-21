@@ -4,6 +4,7 @@ import { apiPath } from "@/lib/base-path";
 
 export interface AuthUser {
   id: string;
+  shopId: string;
   username: string;
   role: "admin" | "user";
 }
@@ -26,7 +27,7 @@ export function useAuth() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (data: { username: string; password: string }) => {
+    mutationFn: async (data: { shopId: string; username: string; password: string }) => {
       const res = await apiRequest("POST", "/api/auth/login", data);
       return res.json();
     },
@@ -36,7 +37,7 @@ export function useAuth() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (data: { username: string; password: string }) => {
+    mutationFn: async (data: { shopId: string; username: string; password: string }) => {
       const res = await apiRequest("POST", "/api/auth/register", data);
       return res.json();
     },

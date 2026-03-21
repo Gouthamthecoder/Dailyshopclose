@@ -34,6 +34,12 @@ import {
   Legend,
 } from "recharts";
 import type { DailyClosing } from "@shared/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type ShopOption = {
+  shopId: string;
+  shopName: string;
+};
 
 type DateRange = "today" | "week" | "month" | "custom";
 
@@ -42,6 +48,7 @@ export default function Dashboard() {
   const [customFrom, setCustomFrom] = useState<Date | undefined>(subDays(new Date(), 7));
   const [customTo, setCustomTo] = useState<Date | undefined>(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [selectedShopId, setSelectedShopId] = useState("all");
 
   const getDateParams = () => {
     const today = new Date();
@@ -69,8 +76,14 @@ export default function Dashboard() {
 
   const { from, to } = getDateParams();
 
+  const { data: shops = [] } = useQuery<ShopOption[]>({
+    queryKey: ["/api/shops"],
+  });
+
+  const closingsQuery = `/api/closings?from=${from}&to=${to}${selectedShopId !== "all" ? `&shopId=${selectedShopId}` : ""}`;
+
   const { data: closings, isLoading } = useQuery<DailyClosing[]>({
-    queryKey: [`/api/closings?from=${from}&to=${to}`],
+    queryKey: [closingsQuery],
   });
 
   const totalSales = closings?.reduce((sum, c) => sum + (c.salesCash + c.salesUpi + c.salesCard), 0) ?? 0;
@@ -101,12 +114,12 @@ export default function Dashboard() {
 
   const downloadCsv = () => {
     if (!closings || closings.length === 0) return;
-    const headers = ["Date", "Cash Sales", "UPI Sales", "Card Sales", "Total Sales", "Expenses", "Net Income", "Customer Visits"];
+    const headers = ["Shop", "Date", "Cash Sales", "UPI Sales", "Card Sales", "Total Sales", "Expenses", "Net Income", "Customer Visits"];
     const rows = closings.map((c) => {
       const total = c.salesCash + c.salesUpi + c.salesCard;
-      return [c.date, c.salesCash, c.salesUpi, c.salesCard, total, c.totalExpenses, total - c.totalExpenses, c.totalCustomerVisits].join(",");
+      return [c.shopId, c.date, c.salesCash, c.salesUpi, c.salesCard, total, c.totalExpenses, total - c.totalExpenses, c.totalCustomerVisits].join(",");
     });
-    const totalRow = ["TOTAL", totalCash, totalUpi, totalCard, totalSales, totalExpenses, totalSales - totalExpenses, totalVisits].join(",");
+    const totalRow = ["TOTAL", selectedShopId, totalCash, totalUpi, totalCard, totalSales, totalExpenses, totalSales - totalExpenses, totalVisits].join(",");
     const csv = [headers.join(","), ...rows, totalRow].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -165,6 +178,19 @@ export default function Dashboard() {
               />
             </PopoverContent>
           </Popover>
+          <Select value={selectedShopId} onValueChange={setSelectedShopId}>
+            <SelectTrigger className="w-[180px]" data-testid="select-dashboard-shop">
+              <SelectValue placeholder="All shops" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All shops</SelectItem>
+              {shops.map((shop) => (
+                <SelectItem key={shop.shopId} value={shop.shopId}>
+                  {shop.shopName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             variant="outline"
             size="sm"

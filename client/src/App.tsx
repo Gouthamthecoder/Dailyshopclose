@@ -70,7 +70,7 @@ function AuthenticatedApp() {
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground" data-testid="text-user-info">
-                {user?.username} ({user?.role})
+                {user?.shopId} / {user?.username} ({user?.role})
               </span>
               <ThemeToggle />
               <Button

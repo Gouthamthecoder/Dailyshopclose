@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import {
@@ -24,17 +24,18 @@ export { hasDatabase };
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByUsername(shopId: string, username: string): Promise<User | undefined>;
   createUser(user: InsertUser & { role?: string }): Promise<User>;
 
-  getSettings(): Promise<ShopSettings>;
-  updateSettings(data: Partial<InsertShopSettings>): Promise<ShopSettings>;
+  getSettings(shopId: string): Promise<ShopSettings>;
+  updateSettings(shopId: string, data: Partial<InsertShopSettings>): Promise<ShopSettings>;
 
-  getClosingByDate(date: string): Promise<DailyClosing | undefined>;
-  getClosingsByDateRange(from: string, to: string): Promise<DailyClosing[]>;
+  getClosingByDate(shopId: string, date: string): Promise<DailyClosing | undefined>;
+  getClosingsByDateRange(from: string, to: string, shopId?: string): Promise<DailyClosing[]>;
   createClosing(data: InsertDailyClosing): Promise<DailyClosing>;
-  updateClosing(id: number, data: Partial<InsertDailyClosing>): Promise<DailyClosing>;
-  getAllClosings(): Promise<DailyClosing[]>;
+  updateClosing(id: number, shopId: string, data: Partial<InsertDailyClosing>): Promise<DailyClosing>;
+  getAllClosings(shopId?: string): Promise<DailyClosing[]>;
+  listShops(): Promise<Array<{ shopId: string; shopName: string }>>;
 }
 
 function cloneRecord<T>(value: T): T {
@@ -48,9 +49,12 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
+  async getUserByUsername(shopId: string, username: string): Promise<User | undefined> {
     if (!db) return undefined;
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.shopId, shopId), eq(users.username, username)));
     return user;
   }
 
@@ -62,42 +66,49 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getSettings(): Promise<ShopSettings> {
+  async getSettings(shopId: string): Promise<ShopSettings> {
     if (!db) {
       throw new Error("Database is not configured");
     }
-    const [existing] = await db.select().from(shopSettings);
+    const [existing] = await db.select().from(shopSettings).where(eq(shopSettings.shopId, shopId));
     if (existing) return existing;
-    const [created] = await db.insert(shopSettings).values({ shopName: "My Shop" }).returning();
+    const [created] = await db.insert(shopSettings).values({ shopId, shopName: "My Shop" }).returning();
     return created;
   }
 
-  async updateSettings(data: Partial<InsertShopSettings>): Promise<ShopSettings> {
+  async updateSettings(shopId: string, data: Partial<InsertShopSettings>): Promise<ShopSettings> {
     if (!db) {
       throw new Error("Database is not configured");
     }
-    const current = await this.getSettings();
+    const current = await this.getSettings(shopId);
     const [updated] = await db
       .update(shopSettings)
-      .set(data as any)
+      .set({ ...data, shopId } as any)
       .where(eq(shopSettings.id, current.id))
       .returning();
     return updated;
   }
 
-  async getClosingByDate(date: string): Promise<DailyClosing | undefined> {
+  async getClosingByDate(shopId: string, date: string): Promise<DailyClosing | undefined> {
     if (!db) return undefined;
-    const [closing] = await db.select().from(dailyClosings).where(eq(dailyClosings.date, date));
+    const [closing] = await db
+      .select()
+      .from(dailyClosings)
+      .where(and(eq(dailyClosings.shopId, shopId), eq(dailyClosings.date, date)));
     return closing;
   }
 
-  async getClosingsByDateRange(from: string, to: string): Promise<DailyClosing[]> {
+  async getClosingsByDateRange(from: string, to: string, shopId?: string): Promise<DailyClosing[]> {
     if (!db) return [];
+    const conditions = [gte(dailyClosings.date, from), lte(dailyClosings.date, to)];
+    if (shopId) {
+      conditions.push(eq(dailyClosings.shopId, shopId));
+    }
     return db
       .select()
       .from(dailyClosings)
-      .where(and(gte(dailyClosings.date, from), lte(dailyClosings.date, to)))
-      .orderBy(dailyClosings.date);
+      .where(and(...conditions))
+      .orderBy(asc(dailyClosings.shopId), asc(dailyClosings.date));
   }
 
   async createClosing(data: InsertDailyClosing): Promise<DailyClosing> {
@@ -108,27 +119,39 @@ export class DatabaseStorage implements IStorage {
     return closing;
   }
 
-  async updateClosing(id: number, data: Partial<InsertDailyClosing>): Promise<DailyClosing> {
+  async updateClosing(id: number, shopId: string, data: Partial<InsertDailyClosing>): Promise<DailyClosing> {
     if (!db) {
       throw new Error("Database is not configured");
     }
     const [closing] = await db
       .update(dailyClosings)
-      .set(data)
-      .where(eq(dailyClosings.id, id))
+      .set({ ...data, shopId })
+      .where(and(eq(dailyClosings.id, id), eq(dailyClosings.shopId, shopId)))
       .returning();
     return closing;
   }
 
-  async getAllClosings(): Promise<DailyClosing[]> {
+  async getAllClosings(shopId?: string): Promise<DailyClosing[]> {
     if (!db) return [];
-    return db.select().from(dailyClosings).orderBy(dailyClosings.date);
+    return db
+      .select()
+      .from(dailyClosings)
+      .where(shopId ? eq(dailyClosings.shopId, shopId) : undefined)
+      .orderBy(asc(dailyClosings.shopId), asc(dailyClosings.date));
+  }
+
+  async listShops(): Promise<Array<{ shopId: string; shopName: string }>> {
+    if (!db) return [];
+    return db
+      .select({ shopId: shopSettings.shopId, shopName: shopSettings.shopName })
+      .from(shopSettings)
+      .orderBy(asc(shopSettings.shopName));
   }
 }
 
 class MemoryStorage implements IStorage {
   private users = new Map<string, User>();
-  private settings: ShopSettings | null = null;
+  private settings = new Map<string, ShopSettings>();
   private closings = new Map<number, DailyClosing>();
   private nextClosingId = 1;
 
@@ -137,14 +160,17 @@ class MemoryStorage implements IStorage {
     return user ? cloneRecord(user) : undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const user = Array.from(this.users.values()).find((entry) => entry.username === username);
+  async getUserByUsername(shopId: string, username: string): Promise<User | undefined> {
+    const user = Array.from(this.users.values()).find(
+      (entry) => entry.shopId === shopId && entry.username === username,
+    );
     return user ? cloneRecord(user) : undefined;
   }
 
   async createUser(insertUser: InsertUser & { role?: string }): Promise<User> {
     const user: User = {
       id: randomUUID(),
+      shopId: insertUser.shopId,
       username: insertUser.username,
       password: insertUser.password,
       role: insertUser.role ?? "user",
@@ -153,47 +179,52 @@ class MemoryStorage implements IStorage {
     return cloneRecord(user);
   }
 
-  async getSettings(): Promise<ShopSettings> {
-    if (!this.settings) {
-      this.settings = {
+  async getSettings(shopId: string): Promise<ShopSettings> {
+    const existing = this.settings.get(shopId);
+    if (!existing) {
+      const created: ShopSettings = {
         id: 1,
+        shopId,
         shopName: "My Shop",
         whatsappGroupLink: null,
         customFields: [],
       };
+      this.settings.set(shopId, created);
+      return cloneRecord(created);
     }
-    const settings = this.settings;
-    return cloneRecord(settings);
+    return cloneRecord(existing);
   }
 
-  async updateSettings(data: Partial<InsertShopSettings>): Promise<ShopSettings> {
-    const current = await this.getSettings();
+  async updateSettings(shopId: string, data: Partial<InsertShopSettings>): Promise<ShopSettings> {
+    const current = await this.getSettings(shopId);
     const customFields = (data.customFields as CustomFieldDef[] | null | undefined) ?? current.customFields;
-    this.settings = {
+    const updated: ShopSettings = {
       ...current,
       ...data,
+      shopId,
       whatsappGroupLink: data.whatsappGroupLink ?? current.whatsappGroupLink,
       customFields,
     };
-    const settings = this.settings;
-    return cloneRecord(settings);
+    this.settings.set(shopId, updated);
+    return cloneRecord(updated);
   }
 
-  async getClosingByDate(date: string): Promise<DailyClosing | undefined> {
-    const closing = Array.from(this.closings.values()).find((entry) => entry.date === date);
+  async getClosingByDate(shopId: string, date: string): Promise<DailyClosing | undefined> {
+    const closing = Array.from(this.closings.values()).find((entry) => entry.shopId === shopId && entry.date === date);
     return closing ? cloneRecord(closing) : undefined;
   }
 
-  async getClosingsByDateRange(from: string, to: string): Promise<DailyClosing[]> {
+  async getClosingsByDateRange(from: string, to: string, shopId?: string): Promise<DailyClosing[]> {
     return Array.from(this.closings.values())
-      .filter((entry) => entry.date >= from && entry.date <= to)
-      .sort((left, right) => left.date.localeCompare(right.date))
+      .filter((entry) => (!shopId || entry.shopId === shopId) && entry.date >= from && entry.date <= to)
+      .sort((left, right) => left.shopId.localeCompare(right.shopId) || left.date.localeCompare(right.date))
       .map((entry) => cloneRecord(entry));
   }
 
   async createClosing(data: InsertDailyClosing): Promise<DailyClosing> {
     const closing: DailyClosing = {
       id: this.nextClosingId++,
+      shopId: data.shopId,
       date: data.date,
       previousCashBalance: data.previousCashBalance ?? 0,
       currentCashBalance: data.currentCashBalance ?? 0,
@@ -214,15 +245,16 @@ class MemoryStorage implements IStorage {
     return cloneRecord(closing);
   }
 
-  async updateClosing(id: number, data: Partial<InsertDailyClosing>): Promise<DailyClosing> {
+  async updateClosing(id: number, shopId: string, data: Partial<InsertDailyClosing>): Promise<DailyClosing> {
     const existing = this.closings.get(id);
-    if (!existing) {
+    if (!existing || existing.shopId !== shopId) {
       throw new Error("Closing not found");
     }
 
     const updated: DailyClosing = {
       ...existing,
       ...data,
+      shopId,
       expenseNotes: data.expenseNotes === undefined ? existing.expenseNotes : data.expenseNotes ?? null,
       stockNotes: data.stockNotes === undefined ? existing.stockNotes : data.stockNotes ?? null,
       electricityMeterReading:
@@ -239,10 +271,17 @@ class MemoryStorage implements IStorage {
     return cloneRecord(updated);
   }
 
-  async getAllClosings(): Promise<DailyClosing[]> {
+  async getAllClosings(shopId?: string): Promise<DailyClosing[]> {
     return Array.from(this.closings.values())
-      .sort((left, right) => left.date.localeCompare(right.date))
+      .filter((entry) => !shopId || entry.shopId === shopId)
+      .sort((left, right) => left.shopId.localeCompare(right.shopId) || left.date.localeCompare(right.date))
       .map((entry) => cloneRecord(entry));
+  }
+
+  async listShops(): Promise<Array<{ shopId: string; shopName: string }>> {
+    return Array.from(this.settings.values())
+      .sort((left, right) => left.shopName.localeCompare(right.shopName))
+      .map((entry) => ({ shopId: entry.shopId, shopName: entry.shopName }));
   }
 }
 
