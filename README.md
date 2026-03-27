@@ -49,6 +49,7 @@ Production deploy notes:
 - production sessions are stored in Postgres instead of in-memory memory store
 - the included Blueprint uses free plans for easiest first deploy; upgrade the database plan before production use if you need long-term persistence and backups
 - on Render free tier, run `npm run db:push` manually after the service and database are created because `preDeployCommand` is not supported
+- the Render build command installs dev dependencies explicitly because the build requires `tsx`, `vite`, `typescript`, and `esbuild`
 
 ### Deploy steps
 
