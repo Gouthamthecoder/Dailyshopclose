@@ -60,6 +60,11 @@ Production deploy notes:
 
 To serve the app from `https://mylitlmonkeys.com/Dailyshopclose`, use Cloudflare Workers in front of Render.
 
+Do not deploy this full repository directly to Cloudflare Pages as a static app. This project depends on an Express server, session handling, and database-backed API routes. The supported setup for this repo is:
+
+- app + database on Render
+- path-based routing on Cloudflare Workers
+
 Files included:
 
 - [cloudflare/worker.mjs](/Users/gouthamsubramanian/coding/Daily-Sales-Reporter/cloudflare/worker.mjs)
