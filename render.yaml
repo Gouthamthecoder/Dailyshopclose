@@ -5,7 +5,6 @@ services:
     plan: free
     autoDeployTrigger: commit
     buildCommand: npm install && npm run build
-    preDeployCommand: npm run db:push
     startCommand: npm start
     healthCheckPath: /Dailyshopclose/healthz
     envVars:
