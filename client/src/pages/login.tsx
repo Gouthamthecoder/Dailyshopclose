@@ -109,7 +109,16 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>Shop ID</FormLabel>
                         <FormControl>
-                          <Input placeholder="shop-1" {...field} data-testid="input-login-shop-id" />
+                          <Input
+                            placeholder="shop-1"
+                            value={field.value ?? ""}
+                            onChange={(event) => field.onChange(event.target.value)}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            autoComplete="organization"
+                            data-testid="input-login-shop-id"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -122,7 +131,16 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>Username</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter username" {...field} data-testid="input-login-username" />
+                          <Input
+                            placeholder="Enter username"
+                            value={field.value ?? ""}
+                            onChange={(event) => field.onChange(event.target.value)}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            autoComplete="username"
+                            data-testid="input-login-username"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -135,7 +153,17 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="Enter password" {...field} data-testid="input-login-password" />
+                          <Input
+                            type="password"
+                            placeholder="Enter password"
+                            value={field.value ?? ""}
+                            onChange={(event) => field.onChange(event.target.value)}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            autoComplete="current-password"
+                            data-testid="input-login-password"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -157,7 +185,16 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>Shop ID</FormLabel>
                         <FormControl>
-                          <Input placeholder="shop-1" {...field} data-testid="input-register-shop-id" />
+                          <Input
+                            placeholder="shop-1"
+                            value={field.value ?? ""}
+                            onChange={(event) => field.onChange(event.target.value)}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            autoComplete="organization"
+                            data-testid="input-register-shop-id"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -170,7 +207,16 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>Username</FormLabel>
                         <FormControl>
-                          <Input placeholder="Choose a username" {...field} data-testid="input-register-username" />
+                          <Input
+                            placeholder="Choose a username"
+                            value={field.value ?? ""}
+                            onChange={(event) => field.onChange(event.target.value)}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            autoComplete="username"
+                            data-testid="input-register-username"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -183,7 +229,17 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="Choose a password" {...field} data-testid="input-register-password" />
+                          <Input
+                            type="password"
+                            placeholder="Choose a password"
+                            value={field.value ?? ""}
+                            onChange={(event) => field.onChange(event.target.value)}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            autoComplete="new-password"
+                            data-testid="input-register-password"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -196,7 +252,17 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>Confirm Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="Confirm your password" {...field} data-testid="input-register-confirm" />
+                          <Input
+                            type="password"
+                            placeholder="Confirm your password"
+                            value={field.value ?? ""}
+                            onChange={(event) => field.onChange(event.target.value)}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            autoComplete="new-password"
+                            data-testid="input-register-confirm"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
