@@ -63,10 +63,12 @@ export async function registerRoutes(
   const SessionStore = MemoryStore(session);
   const PostgresSessionStore = connectPgSimple(session);
   const isProduction = process.env.NODE_ENV === "production";
+  const usePostgresSessionStore =
+    process.env.SESSION_STORE === "postgres" && hasDatabase && dbPool;
   const store =
-    isProduction && hasDatabase && dbPool
+    usePostgresSessionStore
       ? new PostgresSessionStore({
-          pool: dbPool,
+          pool: dbPool ?? undefined,
           createTableIfMissing: true,
         })
       : new SessionStore({ checkPeriod: 86400000 });
@@ -91,6 +93,10 @@ export async function registerRoutes(
 
   if (usingMemoryStorage) {
     console.warn("DATABASE_URL is not set. Running with in-memory storage for local development.");
+  }
+
+  if (!usePostgresSessionStore) {
+    console.warn("Using MemoryStore for sessions. Set SESSION_STORE=postgres to enable Postgres-backed sessions.");
   }
 
   app.get(`${appBasePath}/healthz`, (_req, res) => {
