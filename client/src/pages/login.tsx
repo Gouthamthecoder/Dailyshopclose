@@ -1,19 +1,9 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useState, type FormEvent } from "react";
 import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Store, Loader2, LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -41,31 +31,46 @@ export default function LoginPage() {
   const { login, register } = useAuth();
   const { toast } = useToast();
   const [tab, setTab] = useState("login");
-
-  const loginForm = useForm<LoginValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { shopId: "", username: "", password: "" },
+  const [loginValues, setLoginValues] = useState<LoginValues>({
+    shopId: "",
+    username: "",
+    password: "",
   });
-
-  const registerForm = useForm<RegisterValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: { shopId: "", username: "", password: "", confirmPassword: "" },
+  const [registerValues, setRegisterValues] = useState<RegisterValues>({
+    shopId: "",
+    username: "",
+    password: "",
+    confirmPassword: "",
   });
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [registerError, setRegisterError] = useState<string | null>(null);
 
-  const onLogin = async (values: LoginValues) => {
+  const onLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
     try {
+      setLoginError(null);
+      const values = loginSchema.parse(loginValues);
       await login.mutateAsync(values);
     } catch (err: any) {
-      toast({ title: "Login failed", description: err.message, variant: "destructive" });
+      const message = err?.issues?.[0]?.message ?? err.message;
+      setLoginError(message);
+      toast({ title: "Login failed", description: message, variant: "destructive" });
     }
   };
 
-  const onRegister = async (values: RegisterValues) => {
+  const onRegister = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
     try {
+      setRegisterError(null);
+      const values = registerSchema.parse(registerValues);
       await register.mutateAsync({ shopId: values.shopId, username: values.username, password: values.password });
       toast({ title: "Account created", description: "You've been logged in with daily closing access" });
     } catch (err: any) {
-      toast({ title: "Registration failed", description: err.message, variant: "destructive" });
+      const message = err?.issues?.[0]?.message ?? err.message;
+      setRegisterError(message);
+      toast({ title: "Registration failed", description: message, variant: "destructive" });
     }
   };
 
@@ -100,180 +105,101 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             {tab === "login" ? (
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
-                  <FormField
-                    control={loginForm.control}
-                    name="shopId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Shop ID</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="shop-1"
-                            value={field.value ?? ""}
-                            onChange={(event) => field.onChange(event.target.value)}
-                            onBlur={field.onBlur}
-                            name={field.name}
-                            ref={field.ref}
-                            autoComplete="organization"
-                            data-testid="input-login-shop-id"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={loginForm.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Username</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter username"
-                            value={field.value ?? ""}
-                            onChange={(event) => field.onChange(event.target.value)}
-                            onBlur={field.onBlur}
-                            name={field.name}
-                            ref={field.ref}
-                            autoComplete="username"
-                            data-testid="input-login-username"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={loginForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Enter password"
-                            value={field.value ?? ""}
-                            onChange={(event) => field.onChange(event.target.value)}
-                            onBlur={field.onBlur}
-                            name={field.name}
-                            ref={field.ref}
-                            autoComplete="current-password"
-                            data-testid="input-login-password"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <form onSubmit={onLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" htmlFor="login-shop-id">Shop ID</label>
+                    <Input
+                      id="login-shop-id"
+                      placeholder="shop-1"
+                      value={loginValues.shopId}
+                      onChange={(event) => setLoginValues((current) => ({ ...current, shopId: event.target.value }))}
+                      autoComplete="organization"
+                      data-testid="input-login-shop-id"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" htmlFor="login-username">Username</label>
+                    <Input
+                      id="login-username"
+                      placeholder="Enter username"
+                      value={loginValues.username}
+                      onChange={(event) => setLoginValues((current) => ({ ...current, username: event.target.value }))}
+                      autoComplete="username"
+                      data-testid="input-login-username"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" htmlFor="login-password">Password</label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="Enter password"
+                      value={loginValues.password}
+                      onChange={(event) => setLoginValues((current) => ({ ...current, password: event.target.value }))}
+                      autoComplete="current-password"
+                      data-testid="input-login-password"
+                    />
+                  </div>
+                  {loginError ? <p className="text-sm font-medium text-destructive">{loginError}</p> : null}
                   <Button type="submit" className="w-full" disabled={login.isPending} data-testid="button-login">
                     {login.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LogIn className="w-4 h-4 mr-2" />}
                     Login
                   </Button>
                 </form>
-              </Form>
             ) : (
-              <Form {...registerForm}>
-                <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
-                  <FormField
-                    control={registerForm.control}
-                    name="shopId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Shop ID</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="shop-1"
-                            value={field.value ?? ""}
-                            onChange={(event) => field.onChange(event.target.value)}
-                            onBlur={field.onBlur}
-                            name={field.name}
-                            ref={field.ref}
-                            autoComplete="organization"
-                            data-testid="input-register-shop-id"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={registerForm.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Username</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Choose a username"
-                            value={field.value ?? ""}
-                            onChange={(event) => field.onChange(event.target.value)}
-                            onBlur={field.onBlur}
-                            name={field.name}
-                            ref={field.ref}
-                            autoComplete="username"
-                            data-testid="input-register-username"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={registerForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Choose a password"
-                            value={field.value ?? ""}
-                            onChange={(event) => field.onChange(event.target.value)}
-                            onBlur={field.onBlur}
-                            name={field.name}
-                            ref={field.ref}
-                            autoComplete="new-password"
-                            data-testid="input-register-password"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={registerForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Confirm your password"
-                            value={field.value ?? ""}
-                            onChange={(event) => field.onChange(event.target.value)}
-                            onBlur={field.onBlur}
-                            name={field.name}
-                            ref={field.ref}
-                            autoComplete="new-password"
-                            data-testid="input-register-confirm"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <form onSubmit={onRegister} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" htmlFor="register-shop-id">Shop ID</label>
+                    <Input
+                      id="register-shop-id"
+                      placeholder="shop-1"
+                      value={registerValues.shopId}
+                      onChange={(event) => setRegisterValues((current) => ({ ...current, shopId: event.target.value }))}
+                      autoComplete="organization"
+                      data-testid="input-register-shop-id"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" htmlFor="register-username">Username</label>
+                    <Input
+                      id="register-username"
+                      placeholder="Choose a username"
+                      value={registerValues.username}
+                      onChange={(event) => setRegisterValues((current) => ({ ...current, username: event.target.value }))}
+                      autoComplete="username"
+                      data-testid="input-register-username"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" htmlFor="register-password">Password</label>
+                    <Input
+                      id="register-password"
+                      type="password"
+                      placeholder="Choose a password"
+                      value={registerValues.password}
+                      onChange={(event) => setRegisterValues((current) => ({ ...current, password: event.target.value }))}
+                      autoComplete="new-password"
+                      data-testid="input-register-password"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" htmlFor="register-confirm-password">Confirm Password</label>
+                    <Input
+                      id="register-confirm-password"
+                      type="password"
+                      placeholder="Confirm your password"
+                      value={registerValues.confirmPassword}
+                      onChange={(event) => setRegisterValues((current) => ({ ...current, confirmPassword: event.target.value }))}
+                      autoComplete="new-password"
+                      data-testid="input-register-confirm"
+                    />
+                  </div>
+                  {registerError ? <p className="text-sm font-medium text-destructive">{registerError}</p> : null}
                   <Button type="submit" className="w-full" disabled={register.isPending} data-testid="button-register">
                     {register.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UserPlus className="w-4 h-4 mr-2" />}
                     Create Account
                   </Button>
                 </form>
-              </Form>
             )}
           </CardContent>
         </Card>
