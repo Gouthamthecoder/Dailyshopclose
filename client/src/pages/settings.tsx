@@ -15,6 +15,9 @@ import type { ShopSettings, CustomFieldDef } from "@shared/schema";
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { data: shops = [] } = useQuery<Array<{ shopId: string; shopName: string }>>({
+    queryKey: ["/api/shops"],
+  });
   const { data: settings, isLoading } = useQuery<ShopSettings>({
     queryKey: ["/api/settings"],
   });
@@ -22,6 +25,8 @@ export default function SettingsPage() {
   const [shopName, setShopName] = useState("");
   const [whatsappLink, setWhatsappLink] = useState("");
   const [customFields, setCustomFields] = useState<CustomFieldDef[]>([]);
+  const [newShopId, setNewShopId] = useState("");
+  const [newShopName, setNewShopName] = useState("");
 
   useEffect(() => {
     if (settings) {
@@ -42,6 +47,27 @@ export default function SettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
       toast({ title: "Settings saved", description: "Your shop settings have been updated" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const createShopMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/shops", {
+        shopId: newShopId,
+        shopName: newShopName,
+      });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/shops"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/public/shops"] }),
+      ]);
+      setNewShopId("");
+      setNewShopName("");
+      toast({ title: "Shop created", description: "The new shop is now available for login and user registration" });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -87,6 +113,64 @@ export default function SettingsPage() {
           Configure your shop details and custom data fields
         </p>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
+          <Plus className="w-4 h-4 text-muted-foreground" />
+          <div>
+            <CardTitle className="text-sm font-medium">Create Shop</CardTitle>
+            <CardDescription className="text-xs">Only admins can create new shops for user onboarding</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="newShopId">Shop ID</Label>
+              <Input
+                id="newShopId"
+                value={newShopId}
+                onChange={(e) => setNewShopId(e.target.value)}
+                placeholder="shop-3"
+                data-testid="input-new-shop-id"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="newShopName">Shop Name</Label>
+              <Input
+                id="newShopName"
+                value={newShopName}
+                onChange={(e) => setNewShopName(e.target.value)}
+                placeholder="New Branch Name"
+                data-testid="input-new-shop-name"
+              />
+            </div>
+          </div>
+
+          {shops.length > 0 ? (
+            <div className="space-y-2">
+              <Label>Existing Shops</Label>
+              <div className="flex flex-wrap gap-2">
+                {shops.map((shop) => (
+                  <Badge key={shop.shopId} variant="secondary">
+                    {shop.shopName} ({shop.shopId})
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="flex justify-end">
+            <Button
+              onClick={() => createShopMutation.mutate()}
+              disabled={createShopMutation.isPending}
+              data-testid="button-create-shop"
+            >
+              {createShopMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+              Create Shop
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">

@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from "react";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Store, Loader2, LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -26,10 +29,14 @@ const registerSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>;
 type RegisterValues = z.infer<typeof registerSchema>;
+type ShopOption = { shopId: string; shopName: string };
 
 export default function LoginPage() {
   const { login, register } = useAuth();
   const { toast } = useToast();
+  const { data: shops = [], isLoading: shopsLoading } = useQuery<ShopOption[]>({
+    queryKey: ["/api/public/shops"],
+  });
   const [tab, setTab] = useState("login");
   const [loginValues, setLoginValues] = useState<LoginValues>({
     shopId: "",
@@ -44,6 +51,14 @@ export default function LoginPage() {
   });
   const [loginError, setLoginError] = useState<string | null>(null);
   const [registerError, setRegisterError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const firstShopId = shops[0]?.shopId;
+    if (!firstShopId) return;
+
+    setLoginValues((current) => current.shopId ? current : { ...current, shopId: firstShopId });
+    setRegisterValues((current) => current.shopId ? current : { ...current, shopId: firstShopId });
+  }, [shops]);
 
   const onLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -128,14 +143,32 @@ export default function LoginPage() {
                 <form onSubmit={onLogin} className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium" htmlFor="login-shop-id">Shop ID</label>
-                    <Input
-                      id="login-shop-id"
-                      placeholder="shop-1"
-                      value={loginValues.shopId}
-                      onChange={(event) => setLoginValues((current) => ({ ...current, shopId: event.target.value }))}
-                      autoComplete="organization"
-                      data-testid="input-login-shop-id"
-                    />
+                    {shops.length > 0 ? (
+                      <Select
+                        value={loginValues.shopId}
+                        onValueChange={(value) => setLoginValues((current) => ({ ...current, shopId: value }))}
+                      >
+                        <SelectTrigger id="login-shop-id" data-testid="select-login-shop-id">
+                          <SelectValue placeholder={shopsLoading ? "Loading shops..." : "Select shop"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {shops.map((shop) => (
+                            <SelectItem key={shop.shopId} value={shop.shopId}>
+                              {shop.shopName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id="login-shop-id"
+                        placeholder="shop-1"
+                        value={loginValues.shopId}
+                        onChange={(event) => setLoginValues((current) => ({ ...current, shopId: event.target.value }))}
+                        autoComplete="organization"
+                        data-testid="input-login-shop-id"
+                      />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium" htmlFor="login-username">Username</label>
@@ -170,14 +203,32 @@ export default function LoginPage() {
                 <form onSubmit={onRegister} className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium" htmlFor="register-shop-id">Shop ID</label>
-                    <Input
-                      id="register-shop-id"
-                      placeholder="shop-1"
-                      value={registerValues.shopId}
-                      onChange={(event) => setRegisterValues((current) => ({ ...current, shopId: event.target.value }))}
-                      autoComplete="organization"
-                      data-testid="input-register-shop-id"
-                    />
+                    {shops.length > 0 ? (
+                      <Select
+                        value={registerValues.shopId}
+                        onValueChange={(value) => setRegisterValues((current) => ({ ...current, shopId: value }))}
+                      >
+                        <SelectTrigger id="register-shop-id" data-testid="select-register-shop-id">
+                          <SelectValue placeholder={shopsLoading ? "Loading shops..." : "Select shop"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {shops.map((shop) => (
+                            <SelectItem key={shop.shopId} value={shop.shopId}>
+                              {shop.shopName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id="register-shop-id"
+                        placeholder="shop-1"
+                        value={registerValues.shopId}
+                        onChange={(event) => setRegisterValues((current) => ({ ...current, shopId: event.target.value }))}
+                        autoComplete="organization"
+                        data-testid="input-register-shop-id"
+                      />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium" htmlFor="register-username">Username</label>

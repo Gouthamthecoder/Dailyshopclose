@@ -41,6 +41,11 @@ export const registerSchema = z.object({
   password: z.string().min(4, "Password must be at least 4 characters"),
 });
 
+export const createShopSchema = z.object({
+  shopId: shopIdSchema,
+  shopName: z.string().trim().min(1, "Shop name is required"),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 

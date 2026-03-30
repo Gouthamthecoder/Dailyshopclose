@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { Router } from "express";
 import type { Server } from "http";
 import { dbPool, hasDatabase, storage, usingMemoryStorage } from "./storage";
-import { insertDailyClosingSchema, insertShopSettingsSchema, loginSchema, registerSchema } from "@shared/schema";
+import { createShopSchema, insertDailyClosingSchema, insertShopSettingsSchema, loginSchema, registerSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import session from "express-session";
@@ -54,6 +54,11 @@ function getDashboardShopId(req: Request): string | undefined {
   return requestedShopId && requestedShopId !== "all" ? requestedShopId : undefined;
 }
 
+async function findShop(shopId: string) {
+  const shops = await storage.listShops();
+  return shops.find((shop) => shop.shopId === shopId);
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -103,9 +108,22 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  api.get("/public/shops", async (_req, res) => {
+    try {
+      const shops = await storage.listShops();
+      res.json(shops);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   api.post("/auth/register", async (req, res) => {
     try {
       const data = registerSchema.parse(req.body);
+      const shop = await findShop(data.shopId);
+      if (!shop) {
+        return res.status(400).json({ message: "Please select a valid shop" });
+      }
       const existing = await storage.getUserByUsername(data.shopId, data.username);
       if (existing) {
         return res.status(409).json({ message: "Username already taken for this shop" });
@@ -117,7 +135,6 @@ export async function registerRoutes(
         password: hashed,
         role: "user",
       });
-      await storage.getSettings(data.shopId);
       req.session.userId = user.id;
       req.session.shopId = user.shopId;
       req.session.role = user.role;
@@ -190,6 +207,30 @@ export async function registerRoutes(
       const settings = await storage.getSettings(getScopedShopId(req));
       res.json(settings);
     } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  api.post("/shops", requireAdmin, async (req, res) => {
+    try {
+      const data = createShopSchema.parse(req.body);
+      const existing = await findShop(data.shopId);
+      if (existing) {
+        return res.status(409).json({ message: "Shop ID already exists" });
+      }
+
+      const created = await storage.getSettings(data.shopId);
+      const updated = await storage.updateSettings(data.shopId, {
+        ...created,
+        shopId: data.shopId,
+        shopName: data.shopName,
+      });
+
+      res.status(201).json(updated);
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors.map(e => e.message).join(", ") });
+      }
       res.status(500).json({ message: err.message });
     }
   });
