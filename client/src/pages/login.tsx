@@ -3,10 +3,10 @@ import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Store, Loader2, LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const loginSchema = z.object({
   shopId: z.string().min(1, "Shop ID is required"),
@@ -87,21 +87,41 @@ export default function LoginPage() {
 
         <Card>
           <CardHeader className="pb-3">
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList className="w-full grid grid-cols-2">
-                <TabsTrigger value="login" data-testid="tab-login">Login</TabsTrigger>
-                <TabsTrigger value="register" data-testid="tab-register">Register</TabsTrigger>
-              </TabsList>
+            <div className="grid w-full grid-cols-2 rounded-md bg-muted p-1">
+              <button
+                type="button"
+                className={cn(
+                  "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors",
+                  tab === "login" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+                onClick={() => setTab("login")}
+                data-testid="tab-login"
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors",
+                  tab === "register" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+                onClick={() => setTab("register")}
+                data-testid="tab-register"
+              >
+                Register
+              </button>
+            </div>
 
-              <TabsContent value="login" className="mt-4">
-                <CardTitle className="text-lg">Welcome back</CardTitle>
-                <CardDescription>Enter your credentials to access your shop</CardDescription>
-              </TabsContent>
-              <TabsContent value="register" className="mt-4">
-                <CardTitle className="text-lg">Create account</CardTitle>
-                <CardDescription>New accounts can access only the Daily Closing page</CardDescription>
-              </TabsContent>
-            </Tabs>
+            <div className="mt-4">
+              <CardTitle className="text-lg">
+                {tab === "login" ? "Welcome back" : "Create account"}
+              </CardTitle>
+              <CardDescription>
+                {tab === "login"
+                  ? "Enter your credentials to access your shop"
+                  : "New accounts can access only the Daily Closing page"}
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             {tab === "login" ? (
