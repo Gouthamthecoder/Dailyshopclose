@@ -276,7 +276,7 @@ export default function LoginPage() {
         </Card>
 
       <p className="text-xs text-center text-muted-foreground">
-          Default admin: shop-1 / admin / admin123. New users get daily closing access only within their own shop.
+          New users get daily closing access only within their own shop.
         </p>
       </div>
     </div>
