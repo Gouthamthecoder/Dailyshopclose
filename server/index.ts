@@ -34,6 +34,31 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+const isProduction = process.env.NODE_ENV === "production";
+
+function logStartupWarnings() {
+  if (!process.env.SESSION_SECRET) {
+    log("SESSION_SECRET is not set. Falling back to the development session secret.", "config");
+  }
+
+  if (!process.env.DATABASE_URL) {
+    log("DATABASE_URL is not set. The app will use in-memory storage until a database URL is configured.", "config");
+  }
+
+  if (!isProduction) {
+    log("NODE_ENV is not set to production. Starting in development mode.", "config");
+  }
+}
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+  process.exit(1);
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -60,7 +85,9 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
+async function startServer() {
+  logStartupWarnings();
+
   await seedDatabase().catch((err) => console.error("Seed error:", err));
   await registerRoutes(httpServer, app);
 
@@ -80,26 +107,26 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (process.env.NODE_ENV === "production") {
+  if (isProduction) {
     serveStatic(app);
   } else {
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = Number.parseInt(process.env.PORT || "3000", 10);
   httpServer.listen(
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
     },
     () => {
-      log(`serving on port ${port}`);
+      log(`server started on port ${port}`, "startup");
     },
   );
-})();
+}
+
+startServer().catch((error) => {
+  console.error("Server startup failed:", error);
+  process.exit(1);
+});

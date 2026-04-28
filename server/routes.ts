@@ -68,6 +68,7 @@ export async function registerRoutes(
   const SessionStore = MemoryStore(session);
   const PostgresSessionStore = connectPgSimple(session);
   const isProduction = process.env.NODE_ENV === "production";
+  const sessionSecret = process.env.SESSION_SECRET || "dev-session-secret-change-me";
   const usePostgresSessionStore =
     process.env.SESSION_STORE === "postgres" && hasDatabase && dbPool;
   const store =
@@ -83,7 +84,7 @@ export async function registerRoutes(
   }
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || "dev-session-secret-change-me",
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       store,
@@ -102,6 +103,10 @@ export async function registerRoutes(
 
   if (!usePostgresSessionStore) {
     console.warn("Using MemoryStore for sessions. Set SESSION_STORE=postgres to enable Postgres-backed sessions.");
+  }
+
+  if (isProduction && !process.env.SESSION_SECRET) {
+    console.warn("SESSION_SECRET is not set. Falling back to the development session secret.");
   }
 
   app.get(`${appBasePath}/healthz`, (_req, res) => {
