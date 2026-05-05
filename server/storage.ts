@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { eq, and, gte, lte, asc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import {
   type User, type InsertUser,
   type ShopSettings, type InsertShopSettings,
@@ -13,9 +13,7 @@ const databaseUrl = process.env.DATABASE_URL;
 const hasDatabase = Boolean(databaseUrl);
 
 const pool = hasDatabase
-  ? new pg.Pool({
-      connectionString: databaseUrl,
-    })
+  ? mysql.createPool(databaseUrl!)
   : null;
 
 export const dbPool = pool;
@@ -62,7 +60,14 @@ export class DatabaseStorage implements IStorage {
     if (!db) {
       throw new Error("Database is not configured");
     }
-    const [user] = await db.insert(users).values(insertUser).returning();
+    const user: User = {
+      id: randomUUID(),
+      shopId: insertUser.shopId,
+      username: insertUser.username,
+      password: insertUser.password,
+      role: insertUser.role ?? "user",
+    };
+    await db.insert(users).values(user);
     return user;
   }
 
@@ -72,7 +77,11 @@ export class DatabaseStorage implements IStorage {
     }
     const [existing] = await db.select().from(shopSettings).where(eq(shopSettings.shopId, shopId));
     if (existing) return existing;
-    const [created] = await db.insert(shopSettings).values({ shopId, shopName: "My Shop" }).returning();
+    await db.insert(shopSettings).values({ shopId, shopName: "My Shop" });
+    const [created] = await db.select().from(shopSettings).where(eq(shopSettings.shopId, shopId));
+    if (!created) {
+      throw new Error("Failed to create shop settings");
+    }
     return created;
   }
 
@@ -81,11 +90,14 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Database is not configured");
     }
     const current = await this.getSettings(shopId);
-    const [updated] = await db
+    await db
       .update(shopSettings)
       .set({ ...data, shopId } as any)
-      .where(eq(shopSettings.id, current.id))
-      .returning();
+      .where(eq(shopSettings.id, current.id));
+    const [updated] = await db.select().from(shopSettings).where(eq(shopSettings.id, current.id));
+    if (!updated) {
+      throw new Error("Failed to update shop settings");
+    }
     return updated;
   }
 
@@ -115,7 +127,14 @@ export class DatabaseStorage implements IStorage {
     if (!db) {
       throw new Error("Database is not configured");
     }
-    const [closing] = await db.insert(dailyClosings).values(data).returning();
+    await db.insert(dailyClosings).values(data);
+    const [closing] = await db
+      .select()
+      .from(dailyClosings)
+      .where(and(eq(dailyClosings.shopId, data.shopId), eq(dailyClosings.date, data.date)));
+    if (!closing) {
+      throw new Error("Failed to create closing");
+    }
     return closing;
   }
 
@@ -123,11 +142,17 @@ export class DatabaseStorage implements IStorage {
     if (!db) {
       throw new Error("Database is not configured");
     }
-    const [closing] = await db
+    await db
       .update(dailyClosings)
       .set({ ...data, shopId })
-      .where(and(eq(dailyClosings.id, id), eq(dailyClosings.shopId, shopId)))
-      .returning();
+      .where(and(eq(dailyClosings.id, id), eq(dailyClosings.shopId, shopId)));
+    const [closing] = await db
+      .select()
+      .from(dailyClosings)
+      .where(and(eq(dailyClosings.id, id), eq(dailyClosings.shopId, shopId)));
+    if (!closing) {
+      throw new Error("Failed to update closing");
+    }
     return closing;
   }
 
