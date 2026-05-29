@@ -66,24 +66,12 @@ Production deploy notes:
 7. If your database is empty and you need schema creation, run `npm run db:push` after the Railway database is provisioned, not during build.
 8. Copy the Railway service URL and test the app there.
 
-## Cloudflare path routing
+## Database migration
 
-To serve the app from `https://mylitlmonkeys.com/Dailyshopclose`, use Cloudflare Workers in front of Render.
+If you change the schema and want to update the Railway database, run:
 
-Do not deploy this full repository directly to Cloudflare Pages as a static app. This project depends on an Express server, session handling, and database-backed API routes. The supported setup for this repo is:
+```bash
+npm run db:push
+```
 
-- app + database on Render
-- path-based routing on Cloudflare Workers
-
-Files included:
-
-- [cloudflare/worker.mjs](/Users/gouthamsubramanian/coding/Daily-Sales-Reporter/cloudflare/worker.mjs)
-- [cloudflare/wrangler.toml.example](/Users/gouthamsubramanian/coding/Daily-Sales-Reporter/cloudflare/wrangler.toml.example)
-
-Setup outline:
-
-1. Add `mylitlmonkeys.com` to Cloudflare if it is not already there.
-2. Create a Worker from `cloudflare/worker.mjs`.
-3. Set Worker variable `RENDER_ORIGIN` to your Render service URL.
-4. Add a Worker route for `mylitlmonkeys.com/Dailyshopclose*`.
-5. Keep your normal website origin for all other paths on `mylitlmonkeys.com`.
+Only run this after `DATABASE_URL` is set and the Railway PostgreSQL plugin is attached.
