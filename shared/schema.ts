@@ -1,5 +1,5 @@
-import { randomUUID } from "crypto";
-import { mysqlTable, text, varchar, int, real, json, boolean, serial, uniqueIndex } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
+import { pgTable, text, varchar, integer, real, date, jsonb, boolean, serial, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -9,10 +9,10 @@ const shopIdSchema = z
   .min(1, "Shop ID is required")
   .transform((value) => value.toLowerCase());
 
-export const users = mysqlTable(
+export const users = pgTable(
   "users",
   {
-    id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => randomUUID()),
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
     shopId: text("shop_id").notNull(),
     username: text("username").notNull(),
     password: text("password").notNull(),
@@ -49,14 +49,14 @@ export const createShopSchema = z.object({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
-export const shopSettings = mysqlTable(
+export const shopSettings = pgTable(
   "shop_settings",
   {
     id: serial("id").primaryKey(),
     shopId: text("shop_id").notNull().unique(),
     shopName: text("shop_name").notNull().default("My Shop"),
     whatsappGroupLink: text("whatsapp_group_link"),
-    customFields: json("custom_fields").$type<CustomFieldDef[]>().default([]),
+    customFields: jsonb("custom_fields").$type<CustomFieldDef[]>().default([]),
   },
 );
 
@@ -72,12 +72,12 @@ export const insertShopSettingsSchema = createInsertSchema(shopSettings).omit({ 
 export type InsertShopSettings = z.infer<typeof insertShopSettingsSchema>;
 export type ShopSettings = typeof shopSettings.$inferSelect;
 
-export const dailyClosings = mysqlTable(
+export const dailyClosings = pgTable(
   "daily_closings",
   {
     id: serial("id").primaryKey(),
     shopId: text("shop_id").notNull(),
-    date: varchar("date", { length: 10 }).notNull(),
+    date: date("date").notNull(),
     previousCashBalance: real("previous_cash_balance").notNull().default(0),
     currentCashBalance: real("current_cash_balance").notNull().default(0),
     totalExpenses: real("total_expenses").notNull().default(0),
@@ -85,10 +85,10 @@ export const dailyClosings = mysqlTable(
     salesCash: real("sales_cash").notNull().default(0),
     salesUpi: real("sales_upi").notNull().default(0),
     salesCard: real("sales_card").notNull().default(0),
-    totalCustomerVisits: int("total_customer_visits").notNull().default(0),
+    totalCustomerVisits: integer("total_customer_visits").notNull().default(0),
     stockNotes: text("stock_notes"),
     electricityMeterReading: real("electricity_meter_reading"),
-    customFieldValues: json("custom_field_values").$type<Record<string, string | number>>().default({}),
+    customFieldValues: jsonb("custom_field_values").$type<Record<string, string | number>>().default({}),
     notes: text("notes"),
     status: text("status").notNull().default("draft"),
     sentToWhatsapp: boolean("sent_to_whatsapp").notNull().default(false),

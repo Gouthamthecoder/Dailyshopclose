@@ -7,6 +7,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 import MemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
 import { appBasePath } from "./base-path";
 
 declare module "express-session" {
@@ -65,9 +66,18 @@ export async function registerRoutes(
   const api = Router();
 
   const SessionStore = MemoryStore(session);
+  const PostgresSessionStore = connectPgSimple(session);
   const isProduction = process.env.NODE_ENV === "production";
   const sessionSecret = process.env.SESSION_SECRET || "dev-session-secret-change-me";
-  const store = new SessionStore({ checkPeriod: 86400000 });
+  const usePostgresSessionStore =
+    process.env.SESSION_STORE === "postgres" && hasDatabase && dbPool;
+  const store =
+    usePostgresSessionStore
+      ? new PostgresSessionStore({
+          pool: dbPool ?? undefined,
+          createTableIfMissing: true,
+        })
+      : new SessionStore({ checkPeriod: 86400000 });
 
   if (isProduction) {
     app.set("trust proxy", 1);
@@ -91,7 +101,9 @@ export async function registerRoutes(
     console.warn("DATABASE_URL is not set. Running with in-memory storage for local development.");
   }
 
-  console.warn("Using MemoryStore for sessions.");
+  if (!usePostgresSessionStore) {
+    console.warn("Using MemoryStore for sessions. Set SESSION_STORE=postgres to enable Postgres-backed sessions.");
+  }
 
   if (isProduction && !process.env.SESSION_SECRET) {
     console.warn("SESSION_SECRET is not set. Falling back to the development session secret.");
