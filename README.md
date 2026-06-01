@@ -44,7 +44,8 @@ Production deploy notes:
 - `SESSION_SECRET` should be set as a long random value
 - leave `APP_BASE_PATH` unset for a normal Railway root deployment
 - if you still want to serve the app under a subpath behind a reverse proxy, set `APP_BASE_PATH` at runtime
-- do not run `npm run db:push` during the build step unless Railway has already provisioned `DATABASE_URL` for that environment
+- do not run `npm run db:push` during the build step
+- do not add a pre-deploy command for `npm run db:push` unless the app service already has a non-empty `DATABASE_URL`
 
 ### Deploy steps
 
@@ -75,3 +76,15 @@ npm run db:push
 ```
 
 Only run this after `DATABASE_URL` is set and the Railway PostgreSQL plugin is attached.
+
+## Railway troubleshooting
+
+If Railway shows `DATABASE_URL, ensure the database is provisioned` during a pre-deploy step, it usually means the app service is trying to run `db:push` before the database reference has been populated.
+
+Fix:
+
+1. Remove `npm run db:push` from the Railway build or pre-deploy command.
+2. Attach the PostgreSQL plugin to the Railway project.
+3. Confirm the app service `DATABASE_URL` variable is non-empty in Railway.
+4. Deploy the app.
+5. Run `npm run db:push` only after the database is provisioned and linked.
